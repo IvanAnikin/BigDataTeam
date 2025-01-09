@@ -1,0 +1,13 @@
+mvn clean install
+docker volume create datalake
+docker volume create datamart
+docker volume create metadata
+
+docker build -f crawler/Dockerfile -t crawler-image .
+docker run -d --name crawler-container -v datalake:/app/data/datalake -v metadata:/app/data/metadata crawler-image
+
+docker build -f indexer/Dockerfile -t expanded-indexer-image .
+docker run -d --name expanded-indexer-container -v datalake:/app/data/datalake -v datamart:/app/data/datamart expanded-indexer-image
+
+docker build -f query-engine/Dockerfile -t query-engine-image . 
+docker run -it --name query-engine-container -v datalake:/app/data/datalake -v metadata:/app/data/metadata -v datamart:/app/data/datamart query-engine-image
