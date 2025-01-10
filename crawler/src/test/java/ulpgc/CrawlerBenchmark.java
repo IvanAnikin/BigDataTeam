@@ -3,6 +3,7 @@ package ulpgc;
 import org.openjdk.jmh.annotations.*;
 import software.cheeselooker.control.Command;
 import software.cheeselooker.control.CrawlerCommand;
+import software.cheeselooker.control.HazelcastConfig;
 import software.cheeselooker.implementations.ReaderFromWeb;
 import software.cheeselooker.implementations.StoreInDatalake;
 import software.cheeselooker.ports.ReaderFromWebInterface;
@@ -12,6 +13,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
+
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.map.IMap;
+
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Fork(1)
@@ -20,11 +25,13 @@ import java.util.concurrent.TimeUnit;
 public class CrawlerBenchmark {
     @Benchmark
     public void crawler() {
-        Path bookDatalakePath = Paths.get(System.getProperty("user.dir"), "..", "BookDatalake").normalize();
-        Path metadataPath = Paths.get(System.getProperty("user.dir"), "..", "metadata.csv").normalize();
+        
+        HazelcastInstance hazelcastInstance = new HazelcastConfig().getHazelcastInstance();
+
         ReaderFromWebInterface reader = new ReaderFromWeb();
-        StoreInDatalakeInterface store = new StoreInDatalake(metadataPath.toString());
-        Command crawlerCommand = new CrawlerCommand(bookDatalakePath.toString(), metadataPath.toString(), reader, store);
+        StoreInDatalakeInterface store = new StoreInDatalake(hazelcastInstance);
+        Command crawlerCommand = new CrawlerCommand(reader, store, hazelcastInstance);
+        
         crawlerCommand.download();
     }
 }

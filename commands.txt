@@ -20,3 +20,5 @@ docker run -it --name query-engine-container -p 8080:8080 -v datalake:/app/data/
 
 http://localhost:8080/api/query-engine/search?query=test
 
+docker system prune -a
+

@@ -2,6 +2,8 @@ package software.cheeselooker.apps;
 
 import software.cheeselooker.control.Command;
 import software.cheeselooker.control.CrawlerCommand;
+import software.cheeselooker.control.HazelcastConfig;
+
 import software.cheeselooker.implementations.ReaderFromWeb;
 import software.cheeselooker.implementations.StoreInDatalake;
 import software.cheeselooker.ports.ReaderFromWebInterface;
@@ -13,15 +15,20 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.map.IMap;
+
 
 public class Main {
     public static void main(String[] args) {
-        Path datalakePath = Paths.get(System.getProperty("user.dir"), "/data/datalake").normalize();
-        Path metadataPath = Paths.get(System.getProperty("user.dir"), "/data/metadata/metadata.csv").normalize();
+
+        HazelcastInstance hazelcastInstance = new HazelcastConfig().getHazelcastInstance();
 
         ReaderFromWebInterface reader = new ReaderFromWeb();
-        StoreInDatalakeInterface store = new StoreInDatalake(metadataPath.toString());
-        Command crawlerCommand = new CrawlerCommand(datalakePath.toString(), metadataPath.toString(), reader, store);
+        StoreInDatalakeInterface store = new StoreInDatalake(hazelcastInstance);
+        
+        Command crawlerCommand = new CrawlerCommand(reader, store, hazelcastInstance);
+
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         periodicTask(scheduler, crawlerCommand);
