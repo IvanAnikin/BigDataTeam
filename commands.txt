@@ -1,3 +1,5 @@
+set JAVA_HOME=C:\Program Files\Java\jdk-21
+
 mvn clean install
 docker volume create datalake
 docker volume create datamart
@@ -11,3 +13,10 @@ docker run -d --name expanded-indexer-container -v datalake:/app/data/datalake -
 
 docker build -f query-engine/Dockerfile -t query-engine-image . 
 docker run -it --name query-engine-container -v datalake:/app/data/datalake -v metadata:/app/data/metadata -v datamart:/app/data/datamart query-engine-image
+
+
+docker rm -f query-engine-container
+docker run -it --name query-engine-container -p 8080:8080 -v datalake:/app/data/datalake -v metadata:/app/data/metadata -v datamart:/app/data/datamart query-engine-image
+
+http://localhost:8080/api/query-engine/search?query=test
+

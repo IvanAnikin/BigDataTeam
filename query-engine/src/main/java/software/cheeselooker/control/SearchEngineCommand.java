@@ -20,12 +20,34 @@ public class SearchEngineCommand implements Command {
         this.queryEngine = queryEngine;
     }
 
-    @Override
+    // @Override
     public void execute() throws QueryEngineException {
         System.out.println("\nWelcome to the Search Engine!");
         System.out.println("If you want to exit the search engine, type 'EXIT'");
 
         processSearch();
+    }
+
+
+    @Override
+    public List<Map<String, Object>> execute2(String Input) throws QueryEngineException {
+
+        System.out.println("\nExecute");
+        
+        String[] words = Input.split("\\s+");
+        
+        try {
+            List<Map<String, Object>> wordResults = queryEngine.query(words);
+            outputInterface.displayResults(wordResults, Input);
+            
+            System.out.println("\ndisplayResults");
+
+            return wordResults;
+
+        } catch (Exception e) {
+            System.err.println("An error occurred while processing the query: " + e.getMessage());
+            throw new QueryEngineException(e.getMessage(), e);
+        }
     }
 
     private void processSearch() throws QueryEngineException {
