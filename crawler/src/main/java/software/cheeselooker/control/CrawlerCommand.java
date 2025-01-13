@@ -39,9 +39,15 @@ public class CrawlerCommand implements Command {
     }
 
     private void downloadLastBooks(int successfulDownloads, int lastId) {
+
         while (successfulDownloads < 3) {
             int nextId = lastId + 1;
             lastId++;
+
+            System.out.println("Next ID: " + nextId);
+            System.out.println("Metadata Map Keys: " + metadataMap.keySet());
+            System.out.println("Book Map Keys: " + bookMap.keySet());
+        
 
             if (!metadataMap.containsKey(nextId)) {
                 try {
@@ -65,15 +71,20 @@ public class CrawlerCommand implements Command {
             } else {
                 System.out.println("Metadata already exists for book ID " + nextId);
             }
+            
         }
     }
 
     private void saveBook(InputStream bookStream, String[] titleAndAuthor, int nextId) throws IOException {
         byte[] bookContent = bookStream.readAllBytes();
+
         bookMap.put(nextId, bookContent);
 
         String metadata = String.format("%d,%s,%s", nextId, titleAndAuthor[0], titleAndAuthor[1]);
+
         metadataMap.put(nextId, metadata);
+        
+        System.out.println("Metadata Map put");
     }
 
     private int obtainLastId() {

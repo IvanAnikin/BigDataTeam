@@ -1,5 +1,13 @@
 set JAVA_HOME=C:\Program Files\Java\jdk-21
 
+docker rm -f query-engine-container
+
+docker system prune -a
+
+
+
+STAGE 2:
+
 mvn clean install
 docker volume create datalake
 docker volume create datamart
@@ -15,10 +23,27 @@ docker build -f query-engine/Dockerfile -t query-engine-image .
 docker run -it --name query-engine-container -v datalake:/app/data/datalake -v metadata:/app/data/metadata -v datamart:/app/data/datamart query-engine-image
 
 
-docker rm -f query-engine-container
+Stage3 QueryEngine only spring boot:
 docker run -it --name query-engine-container -p 8080:8080 -v datalake:/app/data/datalake -v metadata:/app/data/metadata -v datamart:/app/data/datamart query-engine-image
 
+
+
+STAGE 3:
+
+mvn clean install
+
+docker network create shared-network
+
+docker build -f crawler/Dockerfile -t crawler-image .
+docker run -d --name crawler-container --network shared-network crawler-image
+docker run -d --name crawler-container2 --network shared-network crawler-image
+docker run -d --name crawler-container3 --network shared-network crawler-image
+
+docker build -f indexer/Dockerfile -t expanded-indexer-image .
+docker run -d --name expanded-indexer-container --network shared-network expanded-indexer-image
+
+docker build -f query-engine/Dockerfile -t query-engine-image . 
+docker run -it --name query-engine-container -p 8080:8080 --network shared-network query-engine-image
+
+
 http://localhost:8080/api/query-engine/search?query=test
-
-docker system prune -a
-

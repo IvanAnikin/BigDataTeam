@@ -15,13 +15,30 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
-public class IndexerCommand implements Command{
-    private final IndexerReader indexerReader;
-    private final IndexerStore indexerStore;
 
-    public IndexerCommand(IndexerReader indexerReader, IndexerStore indexerStore) {
-        this.indexerReader = indexerReader;
-        this.indexerStore = indexerStore;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
+
+
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.map.IMap;
+
+import java.nio.charset.StandardCharsets;
+
+
+
+public class IndexerCommand implements Command{
+    
+    private final IMap<Integer, byte[]> bookMap;
+    private final IMap<String, Map<Integer, List<Integer>>> indexMap;
+
+    public IndexerCommand(HazelcastInstance hazelcastInstance) {
+        this.bookMap = hazelcastInstance.getMap("bookMap");
+        this.indexMap = hazelcastInstance.getMap("indexMap");
     }
 
     @Override
@@ -31,84 +48,59 @@ public class IndexerCommand implements Command{
     }
 
     private void indexLatestBooks() throws IndexerException {
-        Path bookPath = Paths.get(indexerReader.getPath());
-        Path tempTrayPath = Paths.get(System.getProperty("user.dir"), "tempTrayPath");
-        moveLatestBooksToTempTray(tempTrayPath, bookPath);
-        indexBooksFrom(tempTrayPath);
-        deleteTempTray(tempTrayPath);
-    }
 
-    private void moveLatestBooksToTempTray(Path tempTray, Path bookPath) throws IndexerException {
-        createIfNotExists(tempTray);
-        copyLatestBooksToTempTray(bookPath, tempTray);
-    }
-
-    private static void createIfNotExists(Path tempTray) throws IndexerException {
-        if (!Files.exists(tempTray)) {
+        System.out.println("Waiting for books in the bookMap...");
+    
+        while (bookMap.isEmpty()) {
             try {
-                Files.createDirectories(tempTray);
-            } catch (IOException e) {
-                throw new IndexerException(e.getMessage(), e);
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt(); 
+            }
+        }
+
+        System.out.println("Book Map Keys: " + bookMap.keySet());
+
+        for (Map.Entry<Integer, byte[]> entry : bookMap.entrySet()) {
+
+            Integer bookId = entry.getKey();
+            System.out.println("Processing book with ID: " + bookId);
+
+            byte[] book = bookMap.get(bookId);
+            if (book != null) {
+
+                indexBook(bookId, book);
+                bookMap.remove(bookId);
+                System.out.println("Done indexing book with ID: " + bookId);
+            
+            } else {
+            
+                System.out.println("Book with ID " + bookId + " not found in the map.");
+            }
+        }
+
+    }
+
+    private void indexBook(Integer bookId, byte[] book) {
+        String contentAsString = new String(book, StandardCharsets.UTF_8);
+        String[] words = contentAsString.split("\\W+");
+
+        for (int position = 0; position < words.length; position++) {
+            String word = words[position].toLowerCase();
+
+            if (!word.isEmpty()) {
+                indexWord(bookId, word, position);
             }
         }
     }
 
-    private void copyLatestBooksToTempTray(Path bookPath, Path tempTray) throws IndexerException {
-        try (Stream<Path> paths = Files.walk(bookPath)) {
-            paths.filter(Files::isRegularFile)
-                    .sorted((p1, p2) -> {
-                        try {
-                            return Files.getLastModifiedTime(p2).compareTo(Files.getLastModifiedTime(p1));
-                        } catch (IOException e) {
-                            throw new UncheckedIOException(e);
-                        }
-                    })
-                    .limit(5)
-                    .forEach(sourcePath -> {
-                        Path destinationPath = tempTray.resolve(sourcePath.getFileName());
-                        try {
-                            Files.copy(sourcePath, destinationPath, StandardCopyOption.REPLACE_EXISTING);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
+    private void indexWord(Integer bookId, String word, int position) {
 
-                    });
-        } catch (IOException e) {
-            throw new IndexerException(e.getMessage(), e);
-        }
+        Map<Integer, List<Integer>> bookPositions = indexMap.getOrDefault(word, new HashMap<>());
+        bookPositions.putIfAbsent(bookId, new ArrayList<>());
+        bookPositions.get(bookId).add(position);
+
+        indexMap.put(word, bookPositions);
     }
 
-    private void indexBooksFrom(Path tempTrayPath) throws IndexerException {
-        List<Book> books = indexerReader.read(String.valueOf(tempTrayPath));
-
-        for (Book book : books) {
-            indexerStore.index(book);
-        }
-    }
-
-    private static void deleteTempTray(Path tempTrayPath) throws IndexerException {
-        try {
-            deleteFilesFrom(tempTrayPath);
-            Files.deleteIfExists(tempTrayPath);
-        } catch (IOException e) {
-            throw new IndexerException("Failed to delete the temp tray", e);
-        }
-    }
-
-    private static void deleteFilesFrom(Path tempTrayPath) throws IndexerException {
-        if (Files.isDirectory(tempTrayPath)) {
-            try (Stream<Path> files = Files.walk(tempTrayPath)) {
-                files.sorted(Comparator.reverseOrder())
-                        .forEach(path -> {
-                            try {
-                                Files.delete(path);
-                            } catch (IOException e) {
-                                System.err.println("Error deleting file: " + path);
-                            }
-                        });
-            } catch (IOException e) {
-                throw new IndexerException("Failed to walk the directory to delete files", e);
-            }
-        }
-    }
 }

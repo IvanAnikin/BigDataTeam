@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.web.bind.annotation.*;
 import software.cheeselooker.control.Command;
 import software.cheeselooker.control.SearchEngineCommand;
+import software.cheeselooker.control.HazelcastConfig;
 import software.cheeselooker.exceptions.QueryEngineException;
 import software.cheeselooker.implementations.CommonQueryEngine;
 import software.cheeselooker.implementations.SearchInput;
@@ -19,11 +20,26 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
+import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.map.IMap;
+
+
+
 @SpringBootApplication
 @RestController
 public class MainCommonQueryEngine {
 
+    private HazelcastInstance hazelcastInstance;
+
+
+    public MainCommonQueryEngine() {
+        this.hazelcastInstance = HazelcastConfig.getHazelcastInstance();
+    }
+
     public static void main(String[] args) {
+        
+
         SpringApplication.run(MainCommonQueryEngine.class, args);
         System.out.println("\nSpringApplication.run");
     }
@@ -36,25 +52,15 @@ public class MainCommonQueryEngine {
         String response = "";
         
         try {
-            Path bookDatalakePath = Paths.get(System.getProperty("user.dir"), "/data/datalake");
-            Path invertedIndexPath = Paths.get(System.getProperty("user.dir"), "/data/datamart");
-            Path metadataPath = Paths.get(System.getProperty("user.dir"), "/data/metadata/metadata.csv");
-
             Input input = new SearchInput();
             Output output = new SearchOutput();
-            CommonQueryEngine queryEngine = new CommonQueryEngine(
-                    metadataPath.toString(),
-                    bookDatalakePath.toString(),
-                    invertedIndexPath.toString()
-            );
+
+            CommonQueryEngine queryEngine = new CommonQueryEngine(hazelcastInstance);
 
             Command searchEngineCommand = new SearchEngineCommand(input, output, queryEngine);
 
-            
-            // searchEngineCommand.execute();
             List<Map<String, Object>> results = searchEngineCommand.execute2(query);
 
-            // response = "Test response";
             response = results.toString();
 
         } catch (QueryEngineException e) {

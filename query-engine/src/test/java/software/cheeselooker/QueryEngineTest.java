@@ -9,6 +9,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
+import software.cheeselooker.control.HazelcastConfig;
+
+import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.map.IMap;
+
+
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Fork(1)
@@ -17,31 +24,31 @@ import java.util.concurrent.TimeUnit;
 public class QueryEngineTest {
 
     @State(Scope.Benchmark)
-    public static class QueryEnginePath {
-        public Path bookDatalakePath;
-        public Path invertedIndexPath;
-        public Path metaDataPath;
+    public static class HazelcastState {
+        public HazelcastInstance hazelcastInstance;
 
         @Param({"man", "immediate imminent"})
         public String word;
 
         @Setup(Level.Trial)
         public void setup() {
-            invertedIndexPath = Paths.get(System.getProperty("user.dir"), "..", "InvertedIndex");
-            bookDatalakePath = Paths.get(System.getProperty("user.dir"), "..", "BookDatalake");
-            metaDataPath = Paths.get(System.getProperty("user.dir"), "..", "metadata.csv");
+
+            hazelcastInstance = HazelcastConfig.getHazelcastInstance();
+        }
+
+        @TearDown(Level.Trial)
+        public void tearDown() {
+            if (hazelcastInstance != null) {
+                hazelcastInstance.shutdown();
+            }
         }
     }
 
     @Benchmark
-    public void benchmarkQueryEngine(QueryEnginePath path) {
-        QueryEngine queryEngine = new CommonQueryEngine(
-                path.metaDataPath.toString(),
-                path.bookDatalakePath.toString(),
-                path.invertedIndexPath.toString()
-        );
+    public void benchmarkQueryEngine(HazelcastState state) {
+        QueryEngine queryEngine = new CommonQueryEngine(state.hazelcastInstance);
         try {
-            queryEngine.query(new String[]{path.word});
+            queryEngine.query(new String[]{state.word});
         } catch (QueryEngineException e) {
             throw new RuntimeException(e);
         }

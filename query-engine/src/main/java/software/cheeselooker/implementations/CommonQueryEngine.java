@@ -9,27 +9,45 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class CommonQueryEngine implements QueryEngine {
-    private final String metadataPath;
-    private final String bookFolder;
-    private final String indexFolder;
 
-    public CommonQueryEngine(String metadataPath, String bookFolder, String indexFolder) {
-        this.metadataPath = metadataPath;
-        this.bookFolder = bookFolder;
-        this.indexFolder = indexFolder;
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.map.IMap;
+
+import java.nio.charset.StandardCharsets;
+
+
+
+public class CommonQueryEngine implements QueryEngine {
+    private final IMap<Integer, String> metadataMap;
+    private final IMap<Integer, byte[]> bookMap;
+    private final IMap<String, Map<Integer, List<Integer>>> indexMap;
+
+    public CommonQueryEngine(HazelcastInstance hazelcastInstance) {
+        this.metadataMap = hazelcastInstance.getMap("metadataMap");
+        this.bookMap = hazelcastInstance.getMap("bookMap");
+        this.indexMap = hazelcastInstance.getMap("indexMap");
     }
 
     @Override
     public List<Map<String, Object>> query(String[] words) throws QueryEngineException {
         List<Map<String, Object>> results = new ArrayList<>();
-        Set<String> commonBooks = null;
+        Set<Integer> commonBooks = null;
+        
+        System.out.println("indexMap keySet '" + indexMap.keySet() + "'");
 
         for (String word : words) {
-            Map<String, List<Integer>> wordOccurrences = getIndexedInfoOf(word);
+
+            System.out.println("Processing word '" + word + "'");
+
+            Map<Integer, List<Integer>> wordOccurrences = indexMap.get(word);
+            
+
             if (wordOccurrences == null || wordOccurrences.isEmpty()) {
+                System.out.println("wordOccurrences empty");   
                 return Collections.emptyList();
             }
+            System.out.println("wordOccurrences size: '" + wordOccurrences.size() + "'");
+            System.out.println("wordOccurrences key set: '" + wordOccurrences.keySet() + "'");
 
             commonBooks = getCommonBooks(commonBooks, wordOccurrences);
         }
@@ -38,68 +56,13 @@ public class CommonQueryEngine implements QueryEngine {
             return Collections.emptyList();
         }
 
-        Map<String, Book> metadataMap = loadMetadata(metadataPath);
-        getResults(words, commonBooks, metadataMap, results);
+        getResults(words, commonBooks, results);
 
         return results;
     }
 
-    private Map<String, List<Integer>> getIndexedInfoOf(String word) throws QueryEngineException {
-        word = word.trim();
-        return loadIndexedWordInfo(word);
-    }
 
-    private Map<String, List<Integer>> loadIndexedWordInfo(String word) throws QueryEngineException {
-        String wordFilePath = constructWordFilePath(word, indexFolder);
-        File file = new File(wordFilePath);
-
-        if (!file.exists()) {
-            return null;
-        }
-
-        return getWordIndex(wordFilePath);
-    }
-
-    private String constructWordFilePath(String word, String indexFolder) {
-        int depth = Math.min(word.length(), 3);
-        StringBuilder pathBuilder = new StringBuilder(indexFolder);
-        for (int i = 0; i < depth; i++) {
-            pathBuilder.append("/").append(word.charAt(i));
-        }
-        pathBuilder.append("/").append(word).append(".csv");
-        return pathBuilder.toString();
-    }
-
-    private static Map<String, List<Integer>> getWordIndex(String wordFilePath) throws QueryEngineException {
-        Map<String, List<Integer>> wordIndex = new HashMap<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(wordFilePath))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                getWordInfo(line, wordIndex);
-            }
-        } catch (IOException e) {
-            throw new QueryEngineException("Error reading index file", e);
-        }
-        return wordIndex;
-    }
-
-    private static void getWordInfo(String line, Map<String, List<Integer>> wordIndex) {
-        String[] parts = line.split(",");
-        if (parts.length < 2) return;
-        String bookId = parts[0];
-        List<Integer> positions = getWordPositions(parts);
-        wordIndex.put(bookId, positions);
-    }
-
-    private static List<Integer> getWordPositions(String[] parts) {
-        List<Integer> positions = new ArrayList<>();
-        for (String pos : parts[1].split(";")) {
-            positions.add(Integer.parseInt(pos));
-        }
-        return positions;
-    }
-
-    private static Set<String> getCommonBooks(Set<String> commonBooks, Map<String, List<Integer>> wordOccurrences) {
+    private static Set<Integer> getCommonBooks(Set<Integer> commonBooks, Map<Integer, List<Integer>> wordOccurrences) {
         if (commonBooks == null) {
             commonBooks = new HashSet<>(wordOccurrences.keySet());
         } else {
@@ -108,56 +71,40 @@ public class CommonQueryEngine implements QueryEngine {
         return commonBooks;
     }
 
-    public Map<String, Book> loadMetadata(String metadataPath) throws QueryEngineException {
-        try (BufferedReader reader = new BufferedReader(new FileReader(metadataPath))) {
-            return readMetadata(reader);
-        } catch (FileNotFoundException e) {
-            throw new QueryEngineException(e.getMessage(), e);
-        } catch (IOException e) {
-            throw new QueryEngineException("Error reading metadata file", e);
-        }
-    }
+    private void getResults(String[] words, Set<Integer> commonBooks, List<Map<String, Object>> results) throws QueryEngineException {
+        
+        for (Integer bookId : commonBooks) {
 
-    private Map<String, Book> readMetadata(BufferedReader reader) throws IOException {
-        Map<String, Book> metadata = new HashMap<>();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            String[] parts = line.split(",");
-            if (parts.length >= 4) {
-                metadata.put(parts[0], new Book(parts[0], parts[2], parts[3], parts[4]));
+            System.out.println("Processing common book '" + bookId + "'");
+
+            String metadata = metadataMap.get(bookId);
+            if (metadata == null) {
+                System.out.println("Metadata for book ID '" + bookId + "' not found.");
+                continue;
+            }else{
+                System.out.println("Metadata for book ID '" + bookId + "' : " + metadata);
             }
-        }
-        return metadata;
-    }
 
-    private void getResults(String[] words, Set<String> commonBooks, Map<String, Book> metadataMap, List<Map<String, Object>> results) throws QueryEngineException {
-        for (String bookId : commonBooks) {
-            Book metadata = metadataMap.get(bookId);
-            if (metadataNotExists(bookId, metadata)) continue;
+            byte[] bookContent = bookMap.get(bookId);
+            if (bookContent == null) {
+                System.out.println("Book content for ID '" + bookId + "' not found.");
+                continue;
+            }
 
-            String bookPath = String.format("%s/%s_%s.txt", bookFolder, metadata.name(), bookId);
-            Map<String, Object> extractedData = new ParagraphExtractor().findParagraphs(bookPath, words);
+            Map<String, Object> extractedData = new ParagraphExtractor().findParagraphs(bookContent, words);
             List<String> paragraphs = (List<String>) extractedData.get("paragraphs");
             int occurrences = (int) extractedData.get("occurrences");
             addResultsInfo(paragraphs, metadata, occurrences, results);
         }
     }
 
-    private static boolean metadataNotExists(String bookId, Book metadata) {
-        if (metadata == null) {
-            System.out.println("Metadata for book ID '" + bookId + "' not found.");
-            return true;
-        }
-        return false;
-    }
-
-    private static void addResultsInfo(List<String> paragraphs, Book metadata, int occurrences, List<Map<String, Object>> results) {
+    private static void addResultsInfo(List<String> paragraphs, String metadata, int occurrences, List<Map<String, Object>> results) {
         if (!paragraphs.isEmpty()) {
             Map<String, Object> result = new HashMap<>();
-            result.put("book_id", metadata.id());
-            result.put("book_name", metadata.name());
-            result.put("author_name", metadata.author());
-            result.put("URL", metadata.url());
+            result.put("book_id", metadata);
+            result.put("book_name", metadata);
+            result.put("author_name", metadata);
+            result.put("URL", metadata);
             result.put("paragraphs", paragraphs);
             result.put("total_occurrences", occurrences);
             results.add(result);
@@ -166,24 +113,18 @@ public class CommonQueryEngine implements QueryEngine {
 
     public static class ParagraphExtractor {
 
-
-        public Map<String, Object> findParagraphs(String bookPath, String[] searchWords) throws QueryEngineException {
+        public Map<String, Object> findParagraphs(byte[] bookContent, String[] searchWords) throws QueryEngineException {
             Map<String, Object> result = new HashMap<>();
             List<String> relevantParagraphs = new ArrayList<>();
             int totalOccurrences = 0;
 
             Map<String, Pattern> wordPatterns = createWordPatterns(searchWords);
 
-            try (BufferedReader reader = new BufferedReader(new FileReader(bookPath))) {
-                String[] paragraphs = splitTextIntoParagraphs(readFileContent(reader));
+            String contentAsString = new String(bookContent, StandardCharsets.UTF_8);
+            String[] paragraphs = splitTextIntoParagraphs(contentAsString);
 
-                for (String paragraph : paragraphs) {
-                    totalOccurrences += processParagraph(paragraph, wordPatterns, relevantParagraphs);
-                }
-            } catch (FileNotFoundException e) {
-                throw new QueryEngineException("Error: Book file not found: " + bookPath, e);
-            } catch (IOException e) {
-                throw new QueryEngineException("Error reading book file", e);
+            for (String paragraph : paragraphs) {
+                totalOccurrences += processParagraph(paragraph, wordPatterns, relevantParagraphs);
             }
 
             result.put("paragraphs", relevantParagraphs);

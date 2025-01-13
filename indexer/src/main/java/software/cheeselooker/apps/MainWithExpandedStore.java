@@ -1,6 +1,7 @@
 package software.cheeselooker.apps;
 
 import software.cheeselooker.control.IndexerCommand;
+import software.cheeselooker.control.HazelcastConfig;
 import software.cheeselooker.exceptions.IndexerException;
 import software.cheeselooker.implementations.ExpandedHierarchicalCsvStore;
 import software.cheeselooker.implementations.GutenbergBookReader;
@@ -13,16 +14,20 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+
+import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.HazelcastInstance;
+
+
 public class MainWithExpandedStore {
     public static void main(String[] args) {
-        Path bookDatalakePath = Paths.get(System.getProperty("user.dir"), "/data/datalake");
-        Path invertedIndexPath = Paths.get(System.getProperty("user.dir"), "/data/datamart");
         Path stopWordsPath = Paths.get("/app/resources/stopwords.txt");
+        
+        HazelcastInstance hazelcastInstance = HazelcastConfig.getHazelcastInstance();
+        System.out.println("Cluster members: " + hazelcastInstance.getCluster().getMembers());
 
-        IndexerReader indexerReader = new GutenbergBookReader(bookDatalakePath.toString());
+        IndexerCommand hierarchicalCsvController = new IndexerCommand(hazelcastInstance);
 
-        IndexerStore hierarchicalCsvStore = new ExpandedHierarchicalCsvStore(invertedIndexPath, stopWordsPath);
-        IndexerCommand hierarchicalCsvController = new IndexerCommand(indexerReader, hierarchicalCsvStore);
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
         scheduler.scheduleAtFixedRate(() -> {

@@ -23,12 +23,12 @@ public class Main {
     public static void main(String[] args) {
 
         HazelcastInstance hazelcastInstance = new HazelcastConfig().getHazelcastInstance();
+        System.out.println("Cluster members: " + hazelcastInstance.getCluster().getMembers());
 
         ReaderFromWebInterface reader = new ReaderFromWeb();
         StoreInDatalakeInterface store = new StoreInDatalake(hazelcastInstance);
         
         Command crawlerCommand = new CrawlerCommand(reader, store, hazelcastInstance);
-
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         periodicTask(scheduler, crawlerCommand);

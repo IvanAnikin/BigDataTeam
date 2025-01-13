@@ -8,6 +8,8 @@ import software.cheeselooker.ports.Output;
 import java.util.List;
 import java.util.Map;
 
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.map.IMap;
 
 public class SearchEngineCommand implements Command {
     private final Input input;
@@ -20,7 +22,6 @@ public class SearchEngineCommand implements Command {
         this.queryEngine = queryEngine;
     }
 
-    // @Override
     public void execute() throws QueryEngineException {
         System.out.println("\nWelcome to the Search Engine!");
         System.out.println("If you want to exit the search engine, type 'EXIT'");

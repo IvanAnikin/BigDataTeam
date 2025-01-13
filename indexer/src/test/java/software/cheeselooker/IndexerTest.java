@@ -3,6 +3,7 @@ package software.cheeselooker;
 import org.openjdk.jmh.annotations.*;
 import software.cheeselooker.apps.MainWithAggregatedStore;
 import software.cheeselooker.control.IndexerCommand;
+import software.cheeselooker.control.HazelcastConfig;
 import software.cheeselooker.exceptions.IndexerException;
 import software.cheeselooker.implementations.AggregatedHierarchicalCsvStore;
 import software.cheeselooker.implementations.ExpandedHierarchicalCsvStore;
@@ -14,6 +15,11 @@ import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
+
+
+import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.HazelcastInstance;
+
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -44,17 +50,25 @@ public class IndexerTest {
 
     @Benchmark
     public void aggregatedIndexer(IndexerPath path) throws IndexerException {
-        IndexerReader indexerReader = new GutenbergBookReader(path.bookDatalakePath.toString());
-        IndexerStore hierarchicalCsvStore = new AggregatedHierarchicalCsvStore(path.invertedIndexPath, path.stopWordsPath);
-        IndexerCommand hierarchicalCsvController = new IndexerCommand(indexerReader, hierarchicalCsvStore);
+        // IndexerReader indexerReader = new GutenbergBookReader(path.bookDatalakePath.toString());
+        // IndexerStore hierarchicalCsvStore = new AggregatedHierarchicalCsvStore(path.invertedIndexPath, path.stopWordsPath);
+        // IndexerCommand hierarchicalCsvController = new IndexerCommand(indexerReader, hierarchicalCsvStore);
+
+        HazelcastInstance hazelcastInstance = HazelcastConfig.getHazelcastInstance();
+        IndexerCommand hierarchicalCsvController = new IndexerCommand(hazelcastInstance);
+
         hierarchicalCsvController.execute();
     }
 
     @Benchmark
     public void expandedIndexer(IndexerPath path) throws IndexerException {
-        IndexerReader indexerReader = new GutenbergBookReader(path.bookDatalakePath.toString());
-        IndexerStore hierarchicalCsvStore = new ExpandedHierarchicalCsvStore(path.invertedIndexPath, path.stopWordsPath);
-        IndexerCommand hierarchicalCsvController = new IndexerCommand(indexerReader, hierarchicalCsvStore);
+        // IndexerReader indexerReader = new GutenbergBookReader(path.bookDatalakePath.toString());
+        // IndexerStore hierarchicalCsvStore = new ExpandedHierarchicalCsvStore(path.invertedIndexPath, path.stopWordsPath);
+        // IndexerCommand hierarchicalCsvController = new IndexerCommand(indexerReader, hierarchicalCsvStore);
+        
+        HazelcastInstance hazelcastInstance = HazelcastConfig.getHazelcastInstance();
+        IndexerCommand hierarchicalCsvController = new IndexerCommand(hazelcastInstance);
+
         hierarchicalCsvController.execute();
     }
 }
