@@ -1,14 +1,9 @@
-
 package software.cheeselooker.control;
-
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.NetworkConfig;
-import com.hazelcast.config.JoinConfig;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.map.IMap;
-
 
 public class HazelcastConfig {
 
@@ -20,16 +15,18 @@ public class HazelcastConfig {
 
         NetworkConfig network = config.getNetworkConfig();
         network.setPort(5701).setPortAutoIncrement(true);
-        network.getJoin().getTcpIpConfig()
-            .addMember("172.19.0.2") 
-            .setEnabled(true);
-            
-        network.getJoin().getMulticastConfig().setEnabled(false);
 
-        network.getJoin().getTcpIpConfig().setConnectionTimeoutSeconds(30);
+        // Enable multicast for automatic discovery
+        network.getJoin().getTcpIpConfig().setEnabled(false);
+        network.getJoin().getMulticastConfig().setEnabled(true);
+
+        // Optional: Adjust multicast settings if needed
+        network.getJoin().getMulticastConfig()
+            .setMulticastGroup("224.2.2.3")  // Default multicast group
+            .setMulticastPort(54327);        // Default port
+
         config.setProperty("hazelcast.max.no.heartbeat.seconds", "60");
         config.setProperty("hazelcast.logging.level", "DEBUG");
-
 
         return Hazelcast.newHazelcastInstance(config);
     }
