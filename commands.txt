@@ -47,3 +47,9 @@ docker run -it --name query-engine-container -p 8080:8080 --network shared-netwo
 
 
 http://localhost:8080/api/query-engine/search?query=test
+
+
+
+stage 3 v2:
+
+docker run -d --name crawler-container1 -p 5701:5701 crawler-image

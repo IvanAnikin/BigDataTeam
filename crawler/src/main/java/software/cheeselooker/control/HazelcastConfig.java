@@ -16,14 +16,12 @@ public class HazelcastConfig {
         NetworkConfig network = config.getNetworkConfig();
         network.setPort(5701).setPortAutoIncrement(true);
 
-        // Enable multicast for automatic discovery
-        network.getJoin().getTcpIpConfig().setEnabled(false);
-        network.getJoin().getMulticastConfig().setEnabled(true);
-
-        // Optional: Adjust multicast settings if needed
-        network.getJoin().getMulticastConfig()
-            .setMulticastGroup("224.2.2.3")  // Default multicast group
-            .setMulticastPort(54327);        // Default port
+        // Enable TCP/IP discovery
+        network.getJoin().getMulticastConfig().setEnabled(false);
+        network.getJoin().getTcpIpConfig()
+            .addMember("10.26.14.217") // Replace with the IP of the first computer
+            .addMember("10.26.14.218") // Replace with the IP of the second computer
+            .setEnabled(true);
 
         config.setProperty("hazelcast.max.no.heartbeat.seconds", "60");
         config.setProperty("hazelcast.logging.level", "DEBUG");
