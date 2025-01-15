@@ -24,8 +24,7 @@ public class HazelcastConfig {
             .setEnabled(true)
             .setMulticastGroup("224.2.2.3") // Multicast group (can be customized)
             .setMulticastPort(54327)        // Multicast port
-            .setMulticastTimeoutSeconds(2) // Timeout for multicast discovery
-            .addTrustedInterface("192.168.1.*"); // Optional: restrict to local network
+            .setMulticastTimeoutSeconds(10); 
 
         // Disable other join methods to prevent conflicts
         join.getTcpIpConfig().setEnabled(false);
