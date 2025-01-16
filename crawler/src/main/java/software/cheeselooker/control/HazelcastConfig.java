@@ -13,6 +13,8 @@ import com.hazelcast.map.IMap;
 public class HazelcastConfig {
 
     public HazelcastInstance getHazelcastInstance() {
+
+
         Config config = new Config();
         
         config.setClusterName("shared-cluster");

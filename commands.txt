@@ -44,12 +44,9 @@ docker run -d --name expanded-indexer-container --network shared-network expande
 
 docker build -f query-engine/Dockerfile -t query-engine-image . 
 docker run -it --name query-engine-container -p 8080:8080 --network shared-network query-engine-image
+docker run -it --name query-engine-container2 -p 8081:8080 --network shared-network query-engine-image
 
 
 http://localhost:8080/api/query-engine/search?query=test
 
-
-
-stage 3 v2:
-
-docker run -d --name crawler-container1 -p 5701:5701 crawler-image
+docker run --name nginx-load-balancer -p 80:80 --network shared-network -v C:/Users/ivana/Downloads/BIGDATA/BigDataTeam/nginx.conf:/etc/nginx/nginx.conf:ro -d nginx
