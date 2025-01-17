@@ -12,7 +12,8 @@ import com.hazelcast.map.IMap;
 
 public class HazelcastConfig {
 
-    public static HazelcastInstance getHazelcastInstance() {
+    public HazelcastInstance getHazelcastInstance() {
+
         Config config = new Config();
         
         config.setClusterName("shared-cluster");
@@ -20,16 +21,14 @@ public class HazelcastConfig {
 
         NetworkConfig network = config.getNetworkConfig();
         network.setPort(5701).setPortAutoIncrement(true);
+        network.setPublicAddress(System.getenv("My_IP"));
         network.getJoin().getTcpIpConfig()
-            .addMember("172.19.0.2") 
+            .addMember(System.getenv("HOST_IP")) 
             .setEnabled(true);
             
         network.getJoin().getMulticastConfig().setEnabled(false);
 
         network.getJoin().getTcpIpConfig().setConnectionTimeoutSeconds(30);
-        config.setProperty("hazelcast.max.no.heartbeat.seconds", "60");
-        config.setProperty("hazelcast.logging.level", "DEBUG");
-
 
         return Hazelcast.newHazelcastInstance(config);
     }
