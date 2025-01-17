@@ -58,15 +58,15 @@ mvn clean install
 
 Crawler:
     docker build -f crawler/Dockerfile -t crawler-image .
-    docker run -d --name crawler-container -e MY_IP=10.26.14.232 -e HOST_IP=10.26.14.232 -p 5703:5703 crawler-image
+    docker run -d --name crawler-container -e MY_IP=10.26.14.232:5703 -e HOST_IP=10.26.14.232:5703 -p 5703:5703 crawler-image
 
 Indexer:
     docker build -f indexer/Dockerfile -t expanded-indexer-image .
-    docker run -d --name expanded-indexer-container -e MY_IP=10.26.14.231 -e HOST_IP=10.26.14.232 -p 5703:5703 expanded-indexer-image
+    docker run -d --name expanded-indexer-container -e MY_IP=10.26.14.231:5703 -e HOST_IP=10.26.14.232:5703 -p 5703:5703 expanded-indexer-image
 
 Query engine:
     docker build -f query-engine/Dockerfile -t query-engine-image . 
-    docker run -it --name query-engine-container -p 8080:8080 MY_IP=10.26.14.228 -e HOST_IP=10.26.14.232 query-engine-image
+    docker run -it --name query-engine-container -p 8080:8080 -p 5703:5703 -e MY_IP=10.26.14.228:5703 -e HOST_IP=10.26.14.232:5703 query-engine-image
 
 
 NGINX:
