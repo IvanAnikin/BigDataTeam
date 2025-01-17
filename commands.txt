@@ -50,3 +50,21 @@ docker run -it --name query-engine-container2 -p 8081:8080 --network shared-netw
 http://localhost:8080/api/query-engine/search?query=test
 
 docker run --name nginx-load-balancer -p 80:80 --network shared-network -v C:/Users/ivana/Downloads/BIGDATA/BigDataTeam/nginx.conf:/etc/nginx/nginx.conf:ro -d nginx
+
+
+STAGE 3.2
+
+mvn clean install
+
+Crawler:
+    docker build -f crawler/Dockerfile -t crawler-image .
+    docker run -d --name crawler-container -e MY_IP=10.26.14.232 -e HOST_IP=10.26.14.232 -p 5703:5703 crawler-image
+
+Indexer:
+    docker build -f indexer/Dockerfile -t expanded-indexer-image .
+    docker run -d --name expanded-indexer-container -e MY_IP=10.26.14.231 -e HOST_IP=10.26.14.232 -p 5703:5703 expanded-indexer-image
+
+Query engine:
+    docker build -f query-engine/Dockerfile -t query-engine-image . 
+    docker run -it --name query-engine-container -p 8080:8080 MY_IP=10.26.14.228 -e HOST_IP=10.26.14.232 query-engine-image
+    
