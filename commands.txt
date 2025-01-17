@@ -67,3 +67,8 @@ Indexer:
 Query engine:
     docker build -f query-engine/Dockerfile -t query-engine-image . 
     docker run -it --name query-engine-container -p 8080:8080 MY_IP=10.26.14.228 -e HOST_IP=10.26.14.232 query-engine-image
+
+
+NGINX:
+    docker build -f nginx-load-balancer/Dockerfile -t nginx-load-balancer-image .
+    docker run -d --name nginx-load-balancer -p 80:80 nginx-load-balancer-image
