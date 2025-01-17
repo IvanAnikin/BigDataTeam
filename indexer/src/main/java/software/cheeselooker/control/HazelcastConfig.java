@@ -21,7 +21,7 @@ public class HazelcastConfig {
 
         NetworkConfig network = config.getNetworkConfig();
         network.setPort(5703).setPortAutoIncrement(true);
-        network.setPublicAddress(System.getenv("My_IP"));
+        network.setPublicAddress(System.getenv("MY_IP"));
         network.getJoin().getTcpIpConfig()
             .addMember(System.getenv("HOST_IP")) 
             .setEnabled(true);
