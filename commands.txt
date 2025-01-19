@@ -72,3 +72,6 @@ Query engine:
 NGINX:
     docker build -f nginx-load-balancer/Dockerfile -t nginx-load-balancer-image .
     docker run -d --name nginx-load-balancer -p 80:80 nginx-load-balancer-image
+
+Run query: 
+    http://localhost:80/api/query-engine/search?query=test
